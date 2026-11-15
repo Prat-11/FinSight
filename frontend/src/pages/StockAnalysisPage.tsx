@@ -55,7 +55,7 @@ export const StockAnalysisPage: React.FC = () => {
     try {
       const data = await stockService.getStockDetails(sym, period);
       setStockDetails(data);
-      setBuyPrice(data.quote.price.toString());
+      setBuyPrice(String(data.quote?.price ?? 150));
     } catch (err: any) {
       setError(err.message || `Failed to fetch data for ${sym}`);
     } finally {
@@ -168,7 +168,7 @@ export const StockAnalysisPage: React.FC = () => {
 
             <div className="flex flex-col md:items-end">
               <div className="text-3xl font-extrabold text-white font-mono tracking-tight">
-                {currency}{quote.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currency}{(quote.price ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div
                 className={`flex items-center gap-1.5 text-sm font-bold font-mono mt-1 ${
@@ -177,7 +177,7 @@ export const StockAnalysisPage: React.FC = () => {
               >
                 {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                 <span>
-                  {isPositive ? '+' : ''}{quote.change.toFixed(2)} ({isPositive ? '+' : ''}{quote.changePercent.toFixed(2)}%)
+                  {isPositive ? '+' : ''}{(quote.change ?? 0).toFixed(2)} ({isPositive ? '+' : ''}{(quote.changePercent ?? 0).toFixed(2)}%)
                 </span>
                 <span className="text-xs text-gray-400 font-normal">Today</span>
               </div>
@@ -253,23 +253,23 @@ export const StockAnalysisPage: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 font-mono text-xs">
               <div className="bg-gray-900/50 p-3 rounded-xl border border-gray-800">
                 <span className="text-gray-400 block text-[11px]">Open</span>
-                <span className="text-white font-bold text-sm mt-0.5 block">{currency}{quote.open.toFixed(2)}</span>
+                <span className="text-white font-bold text-sm mt-0.5 block">{currency}{(quote.open ?? 0).toFixed(2)}</span>
               </div>
               <div className="bg-gray-900/50 p-3 rounded-xl border border-gray-800">
                 <span className="text-gray-400 block text-[11px]">Day High</span>
-                <span className="text-white font-bold text-sm mt-0.5 block">{currency}{quote.high.toFixed(2)}</span>
+                <span className="text-white font-bold text-sm mt-0.5 block">{currency}{(quote.high ?? 0).toFixed(2)}</span>
               </div>
               <div className="bg-gray-900/50 p-3 rounded-xl border border-gray-800">
                 <span className="text-gray-400 block text-[11px]">Day Low</span>
-                <span className="text-white font-bold text-sm mt-0.5 block">{currency}{quote.low.toFixed(2)}</span>
+                <span className="text-white font-bold text-sm mt-0.5 block">{currency}{(quote.low ?? 0).toFixed(2)}</span>
               </div>
               <div className="bg-gray-900/50 p-3 rounded-xl border border-gray-800">
                 <span className="text-gray-400 block text-[11px]">Prev Close</span>
-                <span className="text-white font-bold text-sm mt-0.5 block">{currency}{quote.previousClose.toFixed(2)}</span>
+                <span className="text-white font-bold text-sm mt-0.5 block">{currency}{(quote.previousClose ?? 0).toFixed(2)}</span>
               </div>
               <div className="bg-gray-900/50 p-3 rounded-xl border border-gray-800">
                 <span className="text-gray-400 block text-[11px]">Volume</span>
-                <span className="text-white font-bold text-sm mt-0.5 block">{(quote.volume / 1000000).toFixed(2)}M</span>
+                <span className="text-white font-bold text-sm mt-0.5 block">{((quote.volume || 0) / 1000000).toFixed(2)}M</span>
               </div>
               <div className="bg-gray-900/50 p-3 rounded-xl border border-gray-800">
                 <span className="text-gray-400 block text-[11px]">Market Cap</span>
@@ -322,32 +322,32 @@ export const StockAnalysisPage: React.FC = () => {
                 <div className="bg-gray-900/60 p-4 rounded-xl border border-gray-800">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs text-gray-400 font-mono">20 SMA & 50 SMA</span>
-                    <Badge variant={indicators.sma20 > indicators.sma50 ? 'success' : 'danger'} size="sm">
-                      {indicators.sma20 > indicators.sma50 ? 'Bullish Cross' : 'Bearish Cross'}
+                    <Badge variant={(indicators.sma20 ?? 0) > (indicators.sma50 ?? 0) ? 'success' : 'danger'} size="sm">
+                      {(indicators.sma20 ?? 0) > (indicators.sma50 ?? 0) ? 'Bullish Cross' : 'Bearish Cross'}
                     </Badge>
                   </div>
                   <div className="text-base font-bold text-white font-mono mt-2">
-                    {currency}{indicators.sma20.toFixed(2)} / {currency}{indicators.sma50.toFixed(2)}
+                    {currency}{(indicators.sma20 ?? 0).toFixed(2)} / {currency}{(indicators.sma50 ?? 0).toFixed(2)}
                   </div>
                   <div className="text-[11px] text-gray-400 mt-1 font-mono">
-                    200 SMA: {currency}{indicators.sma200.toFixed(2)}
+                    200 SMA: {currency}{(indicators.sma200 ?? 0).toFixed(2)}
                   </div>
                 </div>
 
                 <div className="bg-gray-900/60 p-4 rounded-xl border border-gray-800">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs text-gray-400 font-mono">RSI (14 Period)</span>
-                    <Badge variant={indicators.rsi14 > 70 ? 'danger' : indicators.rsi14 < 30 ? 'success' : 'primary'} size="sm">
-                      {indicators.rsi14 > 70 ? 'Overbought' : indicators.rsi14 < 30 ? 'Oversold' : 'Neutral'}
+                    <Badge variant={(indicators.rsi14 ?? 50) > 70 ? 'danger' : (indicators.rsi14 ?? 50) < 30 ? 'success' : 'primary'} size="sm">
+                      {(indicators.rsi14 ?? 50) > 70 ? 'Overbought' : (indicators.rsi14 ?? 50) < 30 ? 'Oversold' : 'Neutral'}
                     </Badge>
                   </div>
                   <div className="text-base font-bold text-white font-mono mt-2">
-                    {indicators.rsi14.toFixed(1)} / 100
+                    {(indicators.rsi14 ?? 50).toFixed(1)} / 100
                   </div>
                   <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden mt-2">
                     <div
                       className="bg-blue-500 h-full rounded-full"
-                      style={{ width: `${Math.min(100, indicators.rsi14)}%` }}
+                      style={{ width: `${Math.min(100, indicators.rsi14 ?? 50)}%` }}
                     />
                   </div>
                 </div>
@@ -355,15 +355,15 @@ export const StockAnalysisPage: React.FC = () => {
                 <div className="bg-gray-900/60 p-4 rounded-xl border border-gray-800">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs text-gray-400 font-mono">MACD Line / Signal</span>
-                    <Badge variant={indicators.macdHist >= 0 ? 'success' : 'danger'} size="sm">
-                      {indicators.macdHist >= 0 ? 'Expansion' : 'Contraction'}
+                    <Badge variant={(indicators.macdHist ?? 0) >= 0 ? 'success' : 'danger'} size="sm">
+                      {(indicators.macdHist ?? 0) >= 0 ? 'Expansion' : 'Contraction'}
                     </Badge>
                   </div>
                   <div className="text-base font-bold text-white font-mono mt-2">
-                    {indicators.macd.toFixed(2)} | {indicators.macdSignal.toFixed(2)}
+                    {(indicators.macd ?? 0).toFixed(2)} | {(indicators.macdSignal ?? 0).toFixed(2)}
                   </div>
                   <div className="text-[11px] text-gray-400 mt-1 font-mono">
-                    Histogram: {indicators.macdHist.toFixed(2)}
+                    Histogram: {(indicators.macdHist ?? 0).toFixed(2)}
                   </div>
                 </div>
 
@@ -373,10 +373,10 @@ export const StockAnalysisPage: React.FC = () => {
                     <span className="text-[10px] text-gray-400 font-mono">20, 2σ</span>
                   </div>
                   <div className="text-base font-bold text-white font-mono mt-2">
-                    {currency}{indicators.upperBand.toFixed(2)}
+                    {currency}{(indicators.upperBand ?? 0).toFixed(2)}
                   </div>
                   <div className="text-[11px] text-gray-400 mt-1 font-mono">
-                    Lower: {currency}{indicators.lowerBand.toFixed(2)}
+                    Lower: {currency}{(indicators.lowerBand ?? 0).toFixed(2)}
                   </div>
                 </div>
               </div>

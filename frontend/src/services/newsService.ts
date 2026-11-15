@@ -100,33 +100,69 @@ const DEMO_NEWS_ARTICLES: NewsArticle[] = [
 export const newsService = {
   async getFinancialNews(symbol?: string): Promise<NewsArticle[]> {
     try {
-      const response = await apiClient.get<NewsArticle[]>('/news', {
+      const response = await apiClient.get<any[]>('/news', {
         params: symbol ? { symbol } : {},
       });
-      return response.data;
+      const data = response.data;
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error('No news');
+      }
+
+      return data.map((item: any, idx: number) => {
+        const publishedDate = item.published_at || item.publishedAt;
+        let publishedStr = 'Recently';
+        if (publishedDate) {
+          try {
+            publishedStr = new Date(publishedDate).toLocaleDateString([], {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            });
+          } catch {
+            publishedStr = 'Today';
+          }
+        }
+
+        const symbolVal = item.symbol || (Array.isArray(item.symbols) && item.symbols.length > 0 ? item.symbols[0] : undefined);
+
+        return {
+          id: String(item.id || `news-${idx}`),
+          title: item.title || 'Market Update',
+          description: item.description || item.summary || item.title,
+          source: item.source || 'FinSight Wire',
+          url: item.url || '#',
+          publishedAt: publishedStr,
+          sentiment: (item.sentiment || 'NEUTRAL').toUpperCase() as 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL',
+          symbol: symbolVal,
+          category: item.category || 'Macro Economy',
+          isDemo: false,
+        };
+      });
     } catch {
       if (symbol) {
         const upper = symbol.toUpperCase();
         const filtered = DEMO_NEWS_ARTICLES.filter((item) => item.symbol === upper);
         if (filtered.length > 0) return filtered;
-        // Generic fallback for queried stock
         return [
           {
             id: 'news-custom-1',
-            title: `${upper} Posts Strong Quarterly Metric Performance, Expanding Operating Cash Reserves`,
+            title: `${upper} Posts Steady Quarterly Metric Performance, Expanding Operating Cash Reserves`,
             description: `Institutional analysts highlight steady operational improvements for ${upper} as strategic investments across core product verticals begin realizing positive returns.`,
             source: 'FinSight Intelligence',
             url: 'https://finsight.io',
             publishedAt: '1 hour ago',
             sentiment: 'POSITIVE',
             symbol: upper,
-            category: 'Corporate Updates',
+            category: 'Earnings & Corporate',
             isDemo: true,
           },
-          ...DEMO_NEWS_ARTICLES.slice(0, 3),
+          ...DEMO_NEWS_ARTICLES.slice(0, 4),
         ];
       }
       return DEMO_NEWS_ARTICLES;
     }
   },
 };
+
+export default newsService;

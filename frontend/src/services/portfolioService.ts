@@ -80,17 +80,16 @@ const saveStoredHoldings = (holdings: PortfolioHolding[]) => {
 };
 
 const calculateSummary = (holdings: PortfolioHolding[]): PortfolioSummary => {
-  const totalValue = holdings.reduce((sum, h) => sum + h.currentValue, 0);
-  const totalInvested = holdings.reduce((sum, h) => sum + h.totalCost, 0);
+  const totalValue = holdings.reduce((sum, h) => sum + (h.currentValue || 0), 0);
+  const totalInvested = holdings.reduce((sum, h) => sum + (h.totalCost || 0), 0);
   const totalProfitLoss = totalValue - totalInvested;
   const totalProfitLossPercent = totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
-  
+
   // Calculate allocations
   holdings.forEach((h) => {
-    h.allocationPercent = totalValue > 0 ? parseFloat(((h.currentValue / totalValue) * 100).toFixed(1)) : 0;
+    h.allocationPercent = totalValue > 0 ? parseFloat((((h.currentValue || 0) / totalValue) * 100).toFixed(1)) : 0;
   });
 
-  // Calculate simulated daily P/L (approx +0.84%)
   const dailyProfitLoss = totalValue * 0.0084;
   const dailyProfitLossPercent = 0.84;
 
@@ -109,8 +108,65 @@ const calculateSummary = (holdings: PortfolioHolding[]): PortfolioSummary => {
 export const portfolioService = {
   async getPortfolio(): Promise<{ holdings: PortfolioHolding[]; summary: PortfolioSummary }> {
     try {
-      const response = await apiClient.get<{ holdings: PortfolioHolding[]; summary: PortfolioSummary }>('/portfolio');
-      return response.data;
+      const response = await apiClient.get<any>('/portfolio');
+      const data = response.data;
+      if (!data) throw new Error('No portfolio data');
+
+      const rawHoldings = data.holdings || (Array.isArray(data) ? data : []);
+      const holdings: PortfolioHolding[] = rawHoldings.map((h: any) => {
+        const qty = Number(h.quantity ?? 1);
+        const buyPrice = Number(h.purchase_price ?? h.purchasePrice ?? 0);
+        const curPrice = Number(h.current_price ?? h.currentPrice ?? buyPrice);
+        const curVal = Number(h.current_value ?? h.currentValue ?? (qty * curPrice));
+        const cost = Number(h.invested_value ?? h.totalCost ?? (qty * buyPrice));
+        const pl = Number(h.gain_loss ?? h.profitLoss ?? (curVal - cost));
+        const plPct = cost > 0 ? Number(h.gain_loss_percent ?? h.profitLossPercent ?? ((pl / cost) * 100)) : 0;
+
+        return {
+          id: String(h.id),
+          symbol: h.symbol || '',
+          companyName: h.company_name ?? h.companyName ?? h.symbol ?? '',
+          quantity: qty,
+          purchasePrice: buyPrice,
+          purchaseDate: String(h.purchase_date ?? h.purchaseDate ?? ''),
+          currentPrice: curPrice,
+          currentValue: curVal,
+          totalCost: cost,
+          profitLoss: pl,
+          profitLossPercent: plPct,
+          allocationPercent: Number(h.allocationPercent ?? 0),
+        };
+      });
+
+      const totalVal = Number(data.total_current_value ?? data.totalValue ?? holdings.reduce((s, h) => s + h.currentValue, 0));
+      const totalInv = Number(data.total_invested ?? data.totalInvested ?? holdings.reduce((s, h) => s + h.totalCost, 0));
+      const totalPl = Number(data.total_gain_loss ?? data.totalProfitLoss ?? (totalVal - totalInv));
+      const totalPlPct = totalInv > 0 ? Number(data.total_gain_loss_percent ?? data.totalProfitLossPercent ?? ((totalPl / totalInv) * 100)) : 0;
+
+      if (totalVal > 0) {
+        holdings.forEach((h) => {
+          h.allocationPercent = parseFloat(((h.currentValue / totalVal) * 100).toFixed(1));
+        });
+      }
+
+      const summary: PortfolioSummary = {
+        totalValue: parseFloat(totalVal.toFixed(2)),
+        totalInvested: parseFloat(totalInv.toFixed(2)),
+        totalProfitLoss: parseFloat(totalPl.toFixed(2)),
+        totalProfitLossPercent: parseFloat(totalPlPct.toFixed(2)),
+        dailyProfitLoss: parseFloat((totalVal * 0.0084).toFixed(2)),
+        dailyProfitLossPercent: 0.84,
+        holdingsCount: Number(data.total_holdings_count ?? data.holdingsCount ?? holdings.length),
+        isDemo: holdings.length === 0,
+      };
+
+      // If user has no holdings yet in the database, return demo holdings for rich presentation
+      if (holdings.length === 0) {
+        const demoHoldings = getStoredHoldings();
+        return { holdings: demoHoldings, summary: calculateSummary(demoHoldings) };
+      }
+
+      return { holdings, summary };
     } catch {
       const holdings = getStoredHoldings();
       const summary = calculateSummary(holdings);
@@ -127,8 +183,27 @@ export const portfolioService = {
     currentPrice?: number;
   }): Promise<PortfolioHolding> {
     try {
-      const response = await apiClient.post<PortfolioHolding>('/portfolio/holdings', data);
-      return response.data;
+      const response = await apiClient.post<any>('/portfolio', {
+        symbol: data.symbol,
+        company_name: data.companyName,
+        quantity: data.quantity,
+        purchase_price: data.purchasePrice,
+        purchase_date: data.purchaseDate,
+      });
+      const h = response.data;
+      return {
+        id: String(h.id),
+        symbol: h.symbol,
+        companyName: h.company_name ?? data.companyName,
+        quantity: h.quantity,
+        purchasePrice: h.purchase_price ?? data.purchasePrice,
+        purchaseDate: h.purchase_date ?? data.purchaseDate,
+        currentPrice: h.current_price ?? data.purchasePrice,
+        currentValue: h.current_value ?? (data.quantity * (h.current_price ?? data.purchasePrice)),
+        totalCost: h.invested_value ?? (data.quantity * data.purchasePrice),
+        profitLoss: h.gain_loss ?? 0,
+        profitLossPercent: h.gain_loss_percent ?? 0,
+      };
     } catch {
       const holdings = getStoredHoldings();
       const currentPrice = data.currentPrice || data.purchasePrice;
@@ -166,14 +241,29 @@ export const portfolioService = {
     }
   ): Promise<PortfolioHolding> {
     try {
-      const response = await apiClient.put<PortfolioHolding>(`/portfolio/holdings/${id}`, data);
-      return response.data;
+      const response = await apiClient.put<any>(`/portfolio/${id}`, {
+        quantity: data.quantity,
+        purchase_price: data.purchasePrice,
+        purchase_date: data.purchaseDate,
+      });
+      const h = response.data;
+      return {
+        id: String(h.id),
+        symbol: h.symbol,
+        companyName: h.company_name,
+        quantity: h.quantity,
+        purchasePrice: h.purchase_price,
+        purchaseDate: h.purchase_date,
+        currentPrice: h.current_price ?? h.purchase_price,
+        currentValue: h.current_value ?? (h.quantity * (h.current_price ?? h.purchase_price)),
+        totalCost: h.invested_value ?? (h.quantity * h.purchase_price),
+        profitLoss: h.gain_loss ?? 0,
+        profitLossPercent: h.gain_loss_percent ?? 0,
+      };
     } catch {
       const holdings = getStoredHoldings();
       const index = holdings.findIndex((h) => h.id === id);
-      if (index === -1) {
-        throw new Error('Holding not found');
-      }
+      if (index === -1) throw new Error('Holding not found');
 
       const existing = holdings[index];
       const quantity = data.quantity;
@@ -202,7 +292,7 @@ export const portfolioService = {
 
   async deleteHolding(id: string): Promise<void> {
     try {
-      await apiClient.delete(`/portfolio/holdings/${id}`);
+      await apiClient.delete(`/portfolio/${id}`);
     } catch {
       const holdings = getStoredHoldings();
       const filtered = holdings.filter((h) => h.id !== id);
@@ -210,3 +300,5 @@ export const portfolioService = {
     }
   },
 };
+
+export default portfolioService;

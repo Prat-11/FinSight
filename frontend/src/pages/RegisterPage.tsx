@@ -132,6 +132,24 @@ export const RegisterPage: React.FC = () => {
           Create Account
         </Button>
 
+        <div className="relative my-3">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-800"></div>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-[#111827] px-2 text-gray-400 font-mono">Or Instant Access</span>
+          </div>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full border-blue-500/40 text-blue-400 hover:bg-blue-500/10"
+          onClick={() => navigate('/dashboard')}
+        >
+          Explore Live Demo (1-Click)
+        </Button>
+
         <div className="pt-4 border-t border-gray-800 text-center text-xs text-gray-400">
           Already have an account?{' '}
           <Link to="/login" className="text-blue-400 hover:text-blue-300 font-semibold">

@@ -27,8 +27,47 @@ const DEMO_LOSERS: MarketMover[] = [
 export const marketService = {
   async getMarketOverview(): Promise<MarketOverview> {
     try {
-      const response = await apiClient.get<MarketOverview>('/market/overview');
-      return response.data;
+      const response = await apiClient.get<any>('/market/overview');
+      const data = response.data;
+      if (!data) throw new Error('No data returned');
+
+      const indices: MarketIndex[] = (data.indices || []).map((idx: any) => ({
+        symbol: idx.symbol || '',
+        name: idx.name || idx.symbol || '',
+        value: Number(idx.value ?? idx.price ?? 0),
+        change: Number(idx.change ?? 0),
+        changePercent: Number(idx.changePercent ?? idx.percent_change ?? 0),
+        high: idx.high,
+        low: idx.low,
+        isDemo: idx.isDemo || false,
+      }));
+
+      const topGainers: MarketMover[] = (data.gainers || data.topGainers || []).map((m: any) => ({
+        symbol: m.symbol || '',
+        name: m.name ?? m.company_name ?? m.symbol ?? '',
+        price: Number(m.price ?? 0),
+        change: Number(m.change ?? 0),
+        changePercent: Number(m.changePercent ?? m.percent_change ?? 0),
+        volume: Number(m.volume ?? 0),
+      }));
+
+      const topLosers: MarketMover[] = (data.losers || data.topLosers || []).map((m: any) => ({
+        symbol: m.symbol || '',
+        name: m.name ?? m.company_name ?? m.symbol ?? '',
+        price: Number(m.price ?? 0),
+        change: Number(m.change ?? 0),
+        changePercent: Number(m.changePercent ?? m.percent_change ?? 0),
+        volume: Number(m.volume ?? 0),
+      }));
+
+      return {
+        indices: indices.length > 0 ? indices : DEMO_INDICES,
+        topGainers: topGainers.length > 0 ? topGainers : DEMO_GAINERS,
+        topLosers: topLosers.length > 0 ? topLosers : DEMO_LOSERS,
+        marketSentiment: data.marketSentiment || 'Bullish',
+        lastUpdated: data.lastUpdated || (data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString()),
+        isDemo: data.isDemo || false,
+      };
     } catch {
       return {
         indices: DEMO_INDICES,
@@ -43,8 +82,17 @@ export const marketService = {
 
   async getTopGainers(): Promise<MarketMover[]> {
     try {
-      const response = await apiClient.get<MarketMover[]>('/market/movers/gainers');
-      return response.data;
+      const response = await apiClient.get<any>('/market/gainers');
+      const data = response.data;
+      if (!Array.isArray(data)) throw new Error('Invalid format');
+      return data.map((m: any) => ({
+        symbol: m.symbol,
+        name: m.name ?? m.company_name ?? m.symbol,
+        price: Number(m.price ?? 0),
+        change: Number(m.change ?? 0),
+        changePercent: Number(m.changePercent ?? m.percent_change ?? 0),
+        volume: Number(m.volume ?? 0),
+      }));
     } catch {
       return DEMO_GAINERS;
     }
@@ -52,10 +100,21 @@ export const marketService = {
 
   async getTopLosers(): Promise<MarketMover[]> {
     try {
-      const response = await apiClient.get<MarketMover[]>('/market/movers/losers');
-      return response.data;
+      const response = await apiClient.get<any>('/market/losers');
+      const data = response.data;
+      if (!Array.isArray(data)) throw new Error('Invalid format');
+      return data.map((m: any) => ({
+        symbol: m.symbol,
+        name: m.name ?? m.company_name ?? m.symbol,
+        price: Number(m.price ?? 0),
+        change: Number(m.change ?? 0),
+        changePercent: Number(m.changePercent ?? m.percent_change ?? 0),
+        volume: Number(m.volume ?? 0),
+      }));
     } catch {
       return DEMO_LOSERS;
     }
   },
 };
+
+export default marketService;

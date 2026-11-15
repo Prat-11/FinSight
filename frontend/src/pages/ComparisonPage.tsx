@@ -72,16 +72,16 @@ export const ComparisonPage: React.FC = () => {
   }));
 
   // Bar chart data for Market Cap comparison (in Billions USD)
-  const marketCapData = data?.metrics.map((m) => ({
+  const marketCapData = (data?.metrics || []).map((m) => ({
     symbol: m.symbol,
-    marketCapB: parseFloat((m.marketCap / 1e9).toFixed(1)),
-  })) || [];
+    marketCapB: parseFloat(((m.marketCap || 0) / 1e9).toFixed(1)),
+  }));
 
   // Bar chart data for P/E Ratio comparison
-  const peData = data?.metrics.map((m) => ({
+  const peData = (data?.metrics || []).map((m) => ({
     symbol: m.symbol,
-    peRatio: m.peRatio,
-  })) || [];
+    peRatio: m.peRatio || 0,
+  }));
 
   return (
     <div className="space-y-6">
@@ -170,88 +170,88 @@ export const ComparisonPage: React.FC = () => {
                 <tbody className="divide-y divide-gray-800/60">
                   <tr className="hover:bg-gray-800/30">
                     <td className="py-3 px-4 text-gray-400 font-sans">Current Price</td>
-                    {data.metrics.map((m) => (
+                    {(data.metrics || []).map((m) => (
                       <td key={m.symbol} className="py-3 px-4 font-bold text-white">
-                        ${m.price.toFixed(2)}
+                        ${(m.price ?? 0).toFixed(2)}
                       </td>
                     ))}
                   </tr>
                   <tr className="hover:bg-gray-800/30">
                     <td className="py-3 px-4 text-gray-400 font-sans">Day Change %</td>
-                    {data.metrics.map((m) => (
+                    {(data.metrics || []).map((m) => (
                       <td
                         key={m.symbol}
                         className={`py-3 px-4 font-bold ${
-                          m.changePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                          (m.changePercent ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
                         }`}
                       >
-                        {m.changePercent >= 0 ? '+' : ''}{m.changePercent.toFixed(2)}%
+                        {(m.changePercent ?? 0) >= 0 ? '+' : ''}{(m.changePercent ?? 0).toFixed(2)}%
                       </td>
                     ))}
                   </tr>
                   <tr className="hover:bg-gray-800/30">
                     <td className="py-3 px-4 text-gray-400 font-sans">Market Cap</td>
-                    {data.metrics.map((m) => (
+                    {(data.metrics || []).map((m) => (
                       <td key={m.symbol} className="py-3 px-4 text-gray-200">
-                        ${(m.marketCap / 1e9).toFixed(1)} Billion
+                        ${((m.marketCap ?? 0) / 1e9).toFixed(1)} Billion
                       </td>
                     ))}
                   </tr>
                   <tr className="hover:bg-gray-800/30">
                     <td className="py-3 px-4 text-gray-400 font-sans">P/E Ratio</td>
-                    {data.metrics.map((m) => (
+                    {(data.metrics || []).map((m) => (
                       <td key={m.symbol} className="py-3 px-4 text-gray-200 font-bold">
-                        {m.peRatio.toFixed(1)}x
+                        {m.peRatio ? `${m.peRatio.toFixed(1)}x` : 'N/A'}
                       </td>
                     ))}
                   </tr>
                   <tr className="hover:bg-gray-800/30">
                     <td className="py-3 px-4 text-gray-400 font-sans">EPS (TTM)</td>
-                    {data.metrics.map((m) => (
+                    {(data.metrics || []).map((m) => (
                       <td key={m.symbol} className="py-3 px-4 text-gray-200">
-                        ${m.eps.toFixed(2)}
+                        ${(m.eps ?? 0).toFixed(2)}
                       </td>
                     ))}
                   </tr>
                   <tr className="hover:bg-gray-800/30">
                     <td className="py-3 px-4 text-gray-400 font-sans">RSI (14 Period)</td>
-                    {data.metrics.map((m) => (
+                    {(data.metrics || []).map((m) => (
                       <td key={m.symbol} className="py-3 px-4 text-blue-400 font-semibold">
-                        {m.rsi}
+                        {m.rsi ?? 50}
                       </td>
                     ))}
                   </tr>
                   <tr className="hover:bg-gray-800/30">
                     <td className="py-3 px-4 text-gray-400 font-sans">Trailing 1-Month Return</td>
-                    {data.metrics.map((m) => (
+                    {(data.metrics || []).map((m) => (
                       <td
                         key={m.symbol}
                         className={`py-3 px-4 font-bold ${
-                          m.return1M >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                          (m.return1M ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
                         }`}
                       >
-                        {m.return1M >= 0 ? '+' : ''}{m.return1M.toFixed(1)}%
+                        {(m.return1M ?? 0) >= 0 ? '+' : ''}{(m.return1M ?? 0).toFixed(1)}%
                       </td>
                     ))}
                   </tr>
                   <tr className="hover:bg-gray-800/30">
                     <td className="py-3 px-4 text-gray-400 font-sans">Trailing 1-Year Return</td>
-                    {data.metrics.map((m) => (
+                    {(data.metrics || []).map((m) => (
                       <td
                         key={m.symbol}
                         className={`py-3 px-4 font-bold ${
-                          m.return1Y >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                          (m.return1Y ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
                         }`}
                       >
-                        {m.return1Y >= 0 ? '+' : ''}{m.return1Y.toFixed(1)}%
+                        {(m.return1Y ?? 0) >= 0 ? '+' : ''}{(m.return1Y ?? 0).toFixed(1)}%
                       </td>
                     ))}
                   </tr>
                   <tr className="hover:bg-gray-800/30">
                     <td className="py-3 px-4 text-gray-400 font-sans">Dividend Yield</td>
-                    {data.metrics.map((m) => (
+                    {(data.metrics || []).map((m) => (
                       <td key={m.symbol} className="py-3 px-4 text-gray-300">
-                        {m.dividendYield.toFixed(2)}%
+                        {(m.dividendYield ?? 0).toFixed(2)}%
                       </td>
                     ))}
                   </tr>

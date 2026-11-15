@@ -171,30 +171,30 @@ export const PortfolioPage: React.FC = () => {
         <StatCard
           title="Total Portfolio Value"
           prefix="$"
-          value={summary?.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-          change={summary?.dailyProfitLossPercent || 0.84}
+          value={(summary?.totalValue ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          change={summary?.dailyProfitLossPercent ?? 0.84}
           changeLabel="24h movement"
           icon={<Wallet className="w-4 h-4" />}
         />
         <StatCard
           title="Total Capital Invested"
           prefix="$"
-          value={summary?.totalInvested.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
-          subtitle={`${summary?.holdingsCount || 0} active positions`}
+          value={(summary?.totalInvested ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          subtitle={`${summary?.holdingsCount ?? holdings.length ?? 0} active positions`}
           icon={<DollarSign className="w-4 h-4" />}
         />
         <StatCard
           title="Total Unrealized P/L"
-          prefix={summary && summary.totalProfitLoss >= 0 ? '+$' : '-$'}
-          value={Math.abs(summary?.totalProfitLoss || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          change={summary?.totalProfitLossPercent || 0}
+          prefix={(summary?.totalProfitLoss ?? 0) >= 0 ? '+$' : '-$'}
+          value={Math.abs(summary?.totalProfitLoss ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          change={summary?.totalProfitLossPercent ?? 0}
           changeLabel="all-time return"
           icon={<Activity className="w-4 h-4" />}
         />
         <StatCard
           title="Overall Return %"
-          prefix={summary && summary.totalProfitLossPercent >= 0 ? '+' : ''}
-          value={summary?.totalProfitLossPercent.toFixed(2) || '0.00'}
+          prefix={(summary?.totalProfitLossPercent ?? 0) >= 0 ? '+' : ''}
+          value={(summary?.totalProfitLossPercent ?? 0).toFixed(2)}
           suffix="%"
           subtitle="Net return on cost basis"
           icon={<TrendingUp className="w-4 h-4" />}
@@ -262,13 +262,13 @@ export const PortfolioPage: React.FC = () => {
                         </div>
                       </td>
                       <td className="py-3 px-3 text-right text-gray-200">{h.quantity}</td>
-                      <td className="py-3 px-3 text-right text-gray-200">${h.purchasePrice.toFixed(2)}</td>
-                      <td className="py-3 px-3 text-right font-bold text-white">${h.currentPrice.toFixed(2)}</td>
-                      <td className="py-3 px-3 text-right font-bold text-white">${h.currentValue.toFixed(2)}</td>
+                      <td className="py-3 px-3 text-right text-gray-200">${(h.purchasePrice ?? 0).toFixed(2)}</td>
+                      <td className="py-3 px-3 text-right font-bold text-white">${(h.currentPrice ?? 0).toFixed(2)}</td>
+                      <td className="py-3 px-3 text-right font-bold text-white">${(h.currentValue ?? 0).toFixed(2)}</td>
                       <td className={`py-3 px-3 text-right font-bold ${isGain ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {isGain ? '+' : ''}${h.profitLoss.toFixed(2)}
+                        {isGain ? '+' : ''}${(h.profitLoss ?? 0).toFixed(2)}
                         <span className="block text-[10px] font-normal">
-                          ({isGain ? '+' : ''}{h.profitLossPercent.toFixed(2)}%)
+                          ({isGain ? '+' : ''}{(h.profitLossPercent ?? 0).toFixed(2)}%)
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right text-gray-300">

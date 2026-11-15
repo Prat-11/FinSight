@@ -1,7 +1,6 @@
 import apiClient from './api';
 import { StockQuote, HistoricalDataPoint, TechnicalIndicators, StockDetails } from '../types';
 
-// Fallback generator for realistic financial data if backend is offline
 const generateHistoricalData = (basePrice: number, days: number = 30): HistoricalDataPoint[] => {
   const points: HistoricalDataPoint[] = [];
   let currentPrice = basePrice;
@@ -10,7 +9,6 @@ const generateHistoricalData = (basePrice: number, days: number = 30): Historica
   for (let i = days; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    // Random walk with slight upward drift
     const changePercent = (Math.random() - 0.48) * 0.035;
     currentPrice = Math.max(10, currentPrice * (1 + changePercent));
     const high = currentPrice * (1 + Math.random() * 0.015);
@@ -86,12 +84,37 @@ const getDemoStockQuote = (symbol: string): StockQuote => {
   };
 };
 
+const mapBackendQuote = (raw: any, symbol: string): StockQuote => {
+  const price = Number(raw.current_price ?? raw.price ?? 150);
+  return {
+    symbol: raw.symbol || symbol.toUpperCase(),
+    companyName: raw.company_name ?? raw.companyName ?? `${symbol.toUpperCase()} Corporation`,
+    price,
+    change: Number(raw.change ?? 0),
+    changePercent: Number(raw.percent_change ?? raw.changePercent ?? 0),
+    high: Number(raw.day_high ?? raw.high ?? (price * 1.01)),
+    low: Number(raw.day_low ?? raw.low ?? (price * 0.99)),
+    open: Number(raw.open_price ?? raw.open ?? price),
+    previousClose: Number(raw.previous_close ?? raw.previousClose ?? price),
+    volume: Number(raw.volume ?? 1000000),
+    marketCap: Number(raw.market_cap ?? raw.marketCap ?? 50000000000),
+    peRatio: Number(raw.pe_ratio ?? raw.peRatio ?? 25),
+    eps: Number(raw.eps ?? 5.5),
+    high52: Number(raw.week_52_high ?? raw.high52 ?? (price * 1.2)),
+    low52: Number(raw.week_52_low ?? raw.low52 ?? (price * 0.8)),
+    dividendYield: Number(raw.dividend_yield ?? raw.dividendYield ?? 0.8),
+    currency: raw.currency || 'USD',
+    lastUpdated: raw.timestamp ? new Date(raw.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString(),
+    isDemo: false,
+  };
+};
+
 export const stockService = {
   async getStockQuote(symbol: string): Promise<StockQuote> {
     try {
-      const response = await apiClient.get<StockQuote>(`/stocks/${symbol}/quote`);
-      return { ...response.data, isDemo: false };
-    } catch (err) {
+      const response = await apiClient.get<any>(`/stocks/${symbol}/quote`);
+      return mapBackendQuote(response.data, symbol);
+    } catch {
       return getDemoStockQuote(symbol);
     }
   },
@@ -101,8 +124,11 @@ export const stockService = {
       const response = await apiClient.get<HistoricalDataPoint[]>(`/stocks/${symbol}/history`, {
         params: { period },
       });
+      if (!Array.isArray(response.data) || response.data.length === 0) {
+        throw new Error('Empty history');
+      }
       return response.data;
-    } catch (err) {
+    } catch {
       const daysMap: Record<string, number> = {
         '1D': 1,
         '1W': 7,
@@ -119,9 +145,22 @@ export const stockService = {
 
   async getTechnicalIndicators(symbol: string): Promise<TechnicalIndicators> {
     try {
-      const response = await apiClient.get<TechnicalIndicators>(`/stocks/${symbol}/indicators`);
-      return response.data;
-    } catch (err) {
+      const response = await apiClient.get<any>(`/stocks/${symbol}/indicators`);
+      const d = response.data;
+      return {
+        symbol: symbol.toUpperCase(),
+        sma20: Number(d.sma_20 ?? d.sma20 ?? 0),
+        sma50: Number(d.sma_50 ?? d.sma50 ?? 0),
+        sma200: Number(d.sma_200 ?? d.sma200 ?? 0),
+        rsi14: Number(d.rsi ?? d.rsi14 ?? 50),
+        macd: Number(d.macd ?? 0),
+        macdSignal: Number(d.macd_signal ?? d.macdSignal ?? 0),
+        macdHist: Number(d.macd_histogram ?? d.macdHist ?? 0),
+        upperBand: Number(d.bollinger_upper ?? d.upperBand ?? 0),
+        lowerBand: Number(d.bollinger_lower ?? d.lowerBand ?? 0),
+        signal: d.signal || (Number(d.rsi ?? 50) > 65 ? 'BUY' : Number(d.rsi ?? 50) < 35 ? 'SELL' : 'NEUTRAL'),
+      };
+    } catch {
       const quote = getDemoStockQuote(symbol);
       const price = quote.price;
       const rsi = Math.floor(45 + Math.random() * 25);
@@ -143,11 +182,39 @@ export const stockService = {
 
   async getStockDetails(symbol: string, period: string = '1M'): Promise<StockDetails> {
     try {
-      const response = await apiClient.get<StockDetails>(`/stocks/${symbol}`, {
+      const response = await apiClient.get<any>(`/stocks/${symbol}`, {
         params: { period },
       });
-      return response.data;
-    } catch (err) {
+      const d = response.data;
+      const quote = mapBackendQuote(d.quote || {}, symbol);
+      const history = Array.isArray(d.history) && d.history.length > 0 ? d.history : await this.getStockHistory(symbol, period);
+      const ind = d.indicators || {};
+
+      return {
+        quote,
+        historical: history,
+        indicators: {
+          symbol: symbol.toUpperCase(),
+          sma20: Number(ind.sma_20 ?? ind.sma20 ?? (quote.price * 0.98)),
+          sma50: Number(ind.sma_50 ?? ind.sma50 ?? (quote.price * 0.95)),
+          sma200: Number(ind.sma_200 ?? ind.sma200 ?? (quote.price * 0.91)),
+          rsi14: Number(ind.rsi ?? ind.rsi14 ?? 55),
+          macd: Number(ind.macd ?? (quote.price * 0.012)),
+          macdSignal: Number(ind.macd_signal ?? ind.macdSignal ?? (quote.price * 0.009)),
+          macdHist: Number(ind.macd_histogram ?? ind.macdHist ?? (quote.price * 0.003)),
+          upperBand: Number(ind.bollinger_upper ?? ind.upperBand ?? (quote.price * 1.05)),
+          lowerBand: Number(ind.bollinger_lower ?? ind.lowerBand ?? (quote.price * 0.94)),
+          signal: (Number(ind.rsi ?? 55) > 65 ? 'BUY' : Number(ind.rsi ?? 55) < 35 ? 'SELL' : 'NEUTRAL'),
+        },
+        overview: d.company_info || {
+          sector: 'Technology & Financial Intelligence',
+          industry: 'Enterprise Software & Analytics',
+          description: `${quote.companyName} is a global leader in innovation, research, product development, and institutional operations.`,
+          headquarters: 'Global Tech Park, CA',
+          website: `https://${symbol.toLowerCase().replace('.ns', '')}.com`,
+        },
+      };
+    } catch {
       const quote = getDemoStockQuote(symbol);
       const history = await this.getStockHistory(symbol, period);
       const indicators = await this.getTechnicalIndicators(symbol);
@@ -161,7 +228,7 @@ export const stockService = {
           industry: 'Enterprise Software & Analytics',
           description: `${quote.companyName} is a global leader in innovation, research, product development, and institutional operations.`,
           headquarters: 'Global Tech Park, CA',
-          website: `https://${symbol.toLowerCase()}.com`,
+          website: `https://${symbol.toLowerCase().replace('.ns', '')}.com`,
         },
       };
     }
@@ -170,9 +237,14 @@ export const stockService = {
   async searchStocks(query: string): Promise<{ symbol: string; name: string; exchange?: string }[]> {
     if (!query || query.trim().length === 0) return [];
     try {
-      const response = await apiClient.get(`/stocks/search`, { params: { q: query } });
-      return response.data;
-    } catch (err) {
+      const response = await apiClient.get<any>(`/stocks/search`, { params: { q: query } });
+      const raw = Array.isArray(response.data) ? response.data : [response.data];
+      return raw.map((item: any) => ({
+        symbol: item.symbol,
+        name: item.name || item.company_name || item.symbol,
+        exchange: item.exchange || (item.currency === 'INR' ? 'NSE' : 'NASDAQ'),
+      }));
+    } catch {
       const defaultList = [
         { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ' },
         { symbol: 'MSFT', name: 'Microsoft Corporation', exchange: 'NASDAQ' },
@@ -192,3 +264,5 @@ export const stockService = {
     }
   },
 };
+
+export default stockService;

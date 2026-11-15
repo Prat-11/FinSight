@@ -1,50 +1,56 @@
-version: '3.8'
+version: "3.8"
 
 services:
+  # PostgreSQL database (optional - app works with SQLite by default)
   db:
     image: postgres:16-alpine
     container_name: finsight-db
     environment:
-      POSTGRES_USER: finsight
-      POSTGRES_PASSWORD: finsight_pass
-      POSTGRES_DB: finsight_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: finsight
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U finsight"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  # FastAPI backend
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: finsight-backend
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://finsight:finsight_pass@db:5432/finsight_db
-      SECRET_KEY: your-secret-key-change-in-production
-      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/finsight
+      - SECRET_KEY=finsight-docker-secret-change-in-production
+      - CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./backend:/app
 
+  # React frontend (development mode)
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: finsight-frontend
     ports:
       - "5173:5173"
     environment:
-      VITE_API_URL: http://localhost:8000/api
+      - VITE_API_URL=http://localhost:8000/api
     depends_on:
       - backend
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - ./frontend/src:/app/src
 
 volumes:
-  postgres_data:
+  pgdata:

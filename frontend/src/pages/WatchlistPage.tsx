@@ -135,17 +135,17 @@ export const WatchlistPage: React.FC = () => {
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-bold text-sm text-white">
-                        ${item.price.toFixed(2)}
+                        ${(item.price ?? 0).toFixed(2)}
                       </td>
 
                       <td className={`py-3.5 px-4 text-right font-semibold ${isGain ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {isGain ? '+' : ''}${item.change.toFixed(2)}
+                        {isGain ? '+' : ''}${(item.change ?? 0).toFixed(2)}
                       </td>
 
                       <td className={`py-3.5 px-4 text-right font-bold ${isGain ? 'text-emerald-400' : 'text-rose-400'}`}>
                         <div className="inline-flex items-center gap-1">
                           {isGain ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                          <span>{isGain ? '+' : ''}{item.changePercent.toFixed(2)}%</span>
+                          <span>{isGain ? '+' : ''}{(item.changePercent ?? 0).toFixed(2)}%</span>
                         </div>
                       </td>
 

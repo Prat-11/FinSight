@@ -9,60 +9,72 @@ interface AuthContextType {
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
+  loginAsDemo: () => void;
   logout: () => void;
 }
+
+const DEFAULT_DEMO_USER: User = {
+  id: 'usr_demo_1',
+  name: 'Demo Investor',
+  email: 'investor@finsight.io',
+  createdAt: new Date().toISOString(),
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('finsight_token'));
+  const [user, setUser] = useState<User | null>(DEFAULT_DEMO_USER);
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('finsight_token') || 'demo-jwt-token');
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const initializeAuth = async () => {
       const storedToken = localStorage.getItem('finsight_token');
-      if (storedToken) {
-        setToken(storedToken);
+      if (storedToken && storedToken !== 'demo-jwt-token') {
         try {
           const currentUser = await authService.getCurrentUser();
           if (currentUser) {
             setUser(currentUser);
+            setToken(storedToken);
           } else {
-            // If token existed but no user, create a fallback demo user or retain stored user
             const savedUserStr = localStorage.getItem('finsight_user');
             if (savedUserStr) {
               setUser(JSON.parse(savedUserStr));
+              setToken(storedToken);
             } else {
-              setUser({
-                id: 'usr_demo_1',
-                name: 'Investor',
-                email: 'demo@finsight.io',
-                createdAt: new Date().toISOString(),
-              });
+              setUser(DEFAULT_DEMO_USER);
+              setToken('demo-jwt-token');
             }
           }
         } catch {
-          // Token might be expired or invalid
           const savedUserStr = localStorage.getItem('finsight_user');
           if (savedUserStr) {
             try {
               setUser(JSON.parse(savedUserStr));
+              setToken(storedToken);
             } catch {
-              setUser(null);
+              setUser(DEFAULT_DEMO_USER);
+              setToken('demo-jwt-token');
             }
+          } else {
+            setUser(DEFAULT_DEMO_USER);
+            setToken('demo-jwt-token');
           }
         }
+      } else {
+        // Default to demo user if no explicit token is saved
+        setUser(DEFAULT_DEMO_USER);
+        setToken('demo-jwt-token');
       }
       setIsLoading(false);
     };
 
     initializeAuth();
 
-    // Listen for unauthorized events dispatched by API interceptor
     const handleUnauthorized = () => {
-      setUser(null);
-      setToken(null);
+      // On 401, revert to demo session instead of breaking the app
+      setUser(DEFAULT_DEMO_USER);
+      setToken('demo-jwt-token');
     };
 
     window.addEventListener('finsight:unauthorized', handleUnauthorized);
@@ -75,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await authService.login(credentials);
-      const authToken = response.token || response.access_token || 'demo-token';
+      const authToken = response.token || response.access_token || 'demo-jwt-token';
       setToken(authToken);
       setUser(response.user);
     } finally {
@@ -87,12 +99,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const response = await authService.register(credentials);
-      const authToken = response.token || response.access_token || 'demo-token';
+      const authToken = response.token || response.access_token || 'demo-jwt-token';
       setToken(authToken);
       setUser(response.user);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const loginAsDemo = () => {
+    localStorage.setItem('finsight_token', 'demo-jwt-token');
+    localStorage.setItem('finsight_user', JSON.stringify(DEFAULT_DEMO_USER));
+    setUser(DEFAULT_DEMO_USER);
+    setToken('demo-jwt-token');
   };
 
   const logout = () => {
@@ -110,6 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         login,
         register,
+        loginAsDemo,
         logout,
       }}
     >
@@ -125,3 +145,5 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+export default AuthContext;

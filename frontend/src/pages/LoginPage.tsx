@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AuthLayout from '../layouts/AuthLayout';
 import Input from '../components/ui/Input';
@@ -11,7 +11,7 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
+  const { login, loginAsDemo } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,6 +37,11 @@ export const LoginPage: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleDemoLogin = () => {
+    loginAsDemo();
+    navigate('/dashboard');
   };
 
   return (
@@ -98,13 +103,32 @@ export const LoginPage: React.FC = () => {
           Sign In
         </Button>
 
-        <div className="pt-4 border-t border-gray-800 text-center text-xs text-gray-400">
-          Don&apos;t have an account?{' '}
-          <Link to="/register" className="text-blue-400 hover:text-blue-300 font-semibold">
-            Create an account
-          </Link>
+        <div className="relative my-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-800"></div>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-[#111827] px-2 text-gray-400 font-mono">Or Instant Access</span>
+          </div>
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full border-blue-500/40 text-blue-400 hover:bg-blue-500/10"
+          onClick={handleDemoLogin}
+          leftIcon={<Sparkles className="w-4 h-4 text-blue-400" />}
+        >
+          Explore Live Demo (1-Click)
+        </Button>
       </form>
+
+      <div className="mt-6 text-center text-xs text-gray-400">
+        Don&apos;t have an institutional account?{' '}
+        <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium">
+          Create Account
+        </Link>
+      </div>
     </AuthLayout>
   );
 };

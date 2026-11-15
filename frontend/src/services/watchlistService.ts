@@ -87,8 +87,29 @@ const saveStoredWatchlist = (watchlist: WatchlistItem[]) => {
 export const watchlistService = {
   async getWatchlist(): Promise<WatchlistItem[]> {
     try {
-      const response = await apiClient.get<WatchlistItem[]>('/watchlist');
-      return response.data;
+      const response = await apiClient.get<any>('/watchlist');
+      const data = response.data;
+      if (!data) throw new Error('No watchlist data');
+
+      const raw = Array.isArray(data) ? data : [data];
+      const items: WatchlistItem[] = raw.map((item: any) => ({
+        id: String(item.id),
+        symbol: item.symbol || '',
+        companyName: item.company_name ?? item.companyName ?? item.symbol ?? '',
+        price: Number(item.current_price ?? item.price ?? 0),
+        change: Number(item.change ?? 0),
+        changePercent: Number(item.percent_change ?? item.changePercent ?? 0),
+        high52: Number(item.week_52_high ?? item.day_high ?? item.high52 ?? 0),
+        low52: Number(item.week_52_low ?? item.day_low ?? item.low52 ?? 0),
+        addedAt: String(item.added_at ?? item.addedAt ?? ''),
+        isDemo: item.isDemo || false,
+      }));
+
+      if (items.length === 0) {
+        return getStoredWatchlist();
+      }
+
+      return items;
     } catch {
       return getStoredWatchlist();
     }
@@ -96,17 +117,29 @@ export const watchlistService = {
 
   async addToWatchlist(symbol: string, companyName?: string): Promise<WatchlistItem> {
     try {
-      const response = await apiClient.post<WatchlistItem>('/watchlist', { symbol, companyName });
-      return response.data;
+      const response = await apiClient.post<any>('/watchlist', {
+        symbol: symbol.toUpperCase(),
+        company_name: companyName,
+      });
+      const item = response.data;
+      return {
+        id: String(item.id),
+        symbol: item.symbol,
+        companyName: item.company_name ?? companyName ?? item.symbol,
+        price: Number(item.current_price ?? 0),
+        change: Number(item.change ?? 0),
+        changePercent: Number(item.percent_change ?? 0),
+        high52: Number(item.week_52_high ?? item.day_high ?? 0),
+        low52: Number(item.week_52_low ?? item.day_low ?? 0),
+        addedAt: String(item.added_at ?? new Date().toISOString()),
+        isDemo: false,
+      };
     } catch {
       const watchlist = getStoredWatchlist();
       const upper = symbol.toUpperCase();
       const existing = watchlist.find((item) => item.symbol === upper);
-      if (existing) {
-        return existing;
-      }
+      if (existing) return existing;
 
-      // Fetch quote for accurate pricing
       const quote = await stockService.getStockQuote(upper);
 
       const newItem: WatchlistItem = {
@@ -138,3 +171,5 @@ export const watchlistService = {
     }
   },
 };
+
+export default watchlistService;
